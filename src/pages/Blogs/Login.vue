@@ -7,7 +7,7 @@
       </el-form-item>
 
       <el-form-item label="Username">
-        <el-input v-model="form.username" placeholder="Enter your username" />
+        <el-input v-model="form.userName" placeholder="Enter your username" />
       </el-form-item>
 
       <el-form-item label="Password">
@@ -36,19 +36,19 @@ import {useRouter} from 'vue-router'
 const router = useRouter()
 
 const form = ref({
-  username: '',
+  userName: '',
   password: '',
   email: '',
 })
 
 const submitLogin = async () => {
   try {
-    const response = await $api.post('/api/Auth/Post/authenticate', form.value)
+    const response = await $api.post('/api/Auth/Post/authenticate', JSON.stringify(form.value))
     console.log('Login successful:', response.data)
     localStorage.setItem('token', response.data.accessToken)
     const decodedToken = jwtDecode(response.data.accessToken)
     localStorage.setItem('user', JSON.stringify(decodedToken))
-    router.push('/')
+    await router.push('/')
   } catch (error) {
     console.error('Login failed:', error)
   }

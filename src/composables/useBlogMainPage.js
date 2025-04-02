@@ -14,9 +14,12 @@ export function useBlogMainPage() {
 
   const router = useRouter();
 
+ const searchQuery = ref('');
+
   const form = ref({
     id: null,
     titleEng: '',
+    tags: [],
     titleTr: '',
     titleRu: '',
     titleUz: '',
@@ -28,6 +31,20 @@ export function useBlogMainPage() {
     userId: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).Id : null,
   })
 
+async function onSearch() {
+  error.value = '';
+  blogs.value = []
+
+  try {
+    const response = await api.get(API_ENDPOINTS.POSTS+'?tag='+searchQuery.value );
+    console.log("response", response)
+    blogs.value = response.data.content;
+  } catch (err) {
+
+  } finally {
+  }
+}
+  
   async function editItem(post) {
     console.log("post", post)
     try {
@@ -108,5 +125,6 @@ export function useBlogMainPage() {
     }
   }
 
-  return { blogs, loading, form, error, dialogVisible, fetchBlogs, deleteItem ,editItem , openPostForm};
+  return { blogs, loading, form, error, dialogVisible,
+     fetchBlogs, deleteItem ,editItem , openPostForm, onSearch, searchQuery};
 }

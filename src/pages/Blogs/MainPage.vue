@@ -17,11 +17,21 @@
       </div>
 
       <div class="content-grid">
+
         <div class="left-column">
-          <div class="post-card relative" v-for="post in blogs" :key="post.id">
+          <el-input v-model="searchQuery" placeholder="Search..." clearable @keydown.enter="onSearch" class="mb-4">
+            <template #suffix>
+              <el-icon>
+                <Search />
+              </el-icon>
+            </template>
+          </el-input>
+          <div class="post-card relative" v-for="(post, index) in blogs" :key="post.id">
             <div class="flex flex-row gap-2 relative">
-              <el-dropdown class="dots" >
-                <el-icon><MoreFilled /></el-icon>
+              <el-dropdown class="dots">
+                <el-icon>
+                  <MoreFilled />
+                </el-icon>
                 <template #dropdown>
                   <el-dropdown-menu>
                     <el-dropdown-item @click="editItem(post)">Edit</el-dropdown-item>
@@ -29,20 +39,28 @@
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
-              <img :src="`https://myblogx-a8gdavgwhhcyh7h7.canadacentral-01.azurewebsites.net/${post.coverImage}`" :alt="post.title" class="post-image" />
+              <img :src="`https://myblogx-a8gdavgwhhcyh7h7.canadacentral-01.azurewebsites.net/${post.coverImage}`"
+                :alt="post.title" class="post-image" />
               <div>
                 <h3>{{ post.title }}</h3>
                 <p class="post-date">{{ formatDate(post.createdAt) }}</p>
                 <p class="post-content">
                   {{ post.content }}
                 </p>
+                <div v-if="post.tagNames.length" class="flex gap-2 flex-wrap">
+                  <el-tag v-for="tag in post.tagNames" :key="tag" type="success">
+                    {{ tag }}
+                  </el-tag>
+                </div>
               </div>
 
-              <div class="comment-btn" @click="toggleComments(post.id)">
-                <el-icon><ChatDotRound class="w-1.5" /></el-icon>
+              <div class="comment-btn" @click="toggleComments(post.id, index)">
+                <el-icon>
+                  <ChatDotRound class="w-1.5" />
+                </el-icon>
               </div>
             </div>
-            <Comments :post="post" v-if="showComments.postId == post.id"/>
+            <Comments :post="post" v-if="showComments.postId == post.id" />
 
 
           </div>
@@ -52,7 +70,9 @@
         <div class="right-column">
           <div class="w-full">
             <el-button @click="openPostForm" class="w-full" type="success">
-              <el-icon class="mr-1"><Plus /></el-icon> Add a new post
+              <el-icon class="mr-1">
+                <Plus />
+              </el-icon> Add a new post
             </el-button>
           </div>
           <div class="social-section">
@@ -109,15 +129,13 @@
         <el-input v-model="form.contentRu" type="textarea" placeholder="Enter Russian content" />
       </el-form-item>
 
+      <el-form-item label="Tags">
+        <el-input v-model="form.tags" type="textarea" placeholder="Enter tags" />
+      </el-form-item>
+
       <el-form-item label="Cover Image">
-        <el-upload
-          class="upload-demo"
-          action="#"
-          :limit="1"
-          :on-change="handleFileChange"
-          :file-list="fileList"
-          list-type="picture"
-        >
+        <el-upload class="upload-demo" action="#" :limit="1" :on-change="handleFileChange" :file-list="fileList"
+          list-type="picture">
           <el-button type="primary">Upload Image</el-button>
         </el-upload>
         <div v-if="imagePreview" class="image-preview">
@@ -140,15 +158,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted , watch} from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { Plus, MoreFilled, ChatDotRound } from '@element-plus/icons-vue'
 
 import { useBlogMainPage } from '@/composables/useBlogMainPage'
 
 const { blogs, loading, error, fetchBlogs, deleteItem, editItem, form,
-  dialogVisible, openPostForm } = useBlogMainPage()
+  dialogVisible, openPostForm, onSearch, searchQuery } = useBlogMainPage()
 
-const userInformation = localStorage.getItem('user')? JSON.parse(localStorage.getItem('user')) :{}
+const userInformation = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : {}
 
 import { ElLoading, ElMessage } from 'element-plus'
 import api from '@/services/api.js'
@@ -167,24 +185,17 @@ const newComment = ref({});
 const fileList = ref([])
 const imagePreview = ref(null)
 
-function toggleComments(postId) {
+
+async function toggleComments(postId, index) {
   if (postId == showComments.value.postId) {
     showComments.value.postId = null
     return
   }
+  const res = await api.get(`/api/Comments/GetAll?postId=${blogs.value[index].id}&PageSize=100&PageIndex=1`);
+  blogs.value[index].comments = res.data.content;
   showComments.value.postId = postId;
 }
 
-function addComment(postId) {
-  const comment = newComment.value[postId]?.trim();
-  if (!comment) return;
-
-  const post = blogs.find(p => p.id === postId);
-  if (post) {
-    post.comments.push({ id: Date.now(), author: 'You', content: comment });
-    newComment.value[postId] = ''; // Clear input field
-  }
-}
 
 const handleFileChange = (file) => {
   fileList.value = [file]
@@ -199,7 +210,7 @@ const formatDate = (timestamp) => {
   return dayjs(timestamp).format('dddd, MMMM D, YYYY [at] h:mm A')
 }
 
-const updatePost = async ()=>{
+const updatePost = async () => {
   const formData = new FormData()
   formData.append('Title.Eng', form.value.titleEng)
   formData.append('Title.Tr', form.value.titleTr)
@@ -232,10 +243,13 @@ const updatePost = async ()=>{
 }
 
 const submitForm = async () => {
-  if (form.value.id){
+  if (form.value.id) {
     updatePost()
     return
   }
+
+  let tags = form.value.tags.split(' ');
+  tags = tags.filter((tag) => tag.trim() !== '')
 
   const formData = new FormData()
   formData.append('Title.Eng', form.value.titleEng)
@@ -248,6 +262,8 @@ const submitForm = async () => {
   formData.append('Content.Uz', form.value.contentUz)
   formData.append('IsPublished', form.value.isPublished)
   formData.append('UserId', form.value.userId)
+  formData.append('CategoryIds', 1)
+  formData.append('Tags', tags)
 
   if (fileList.value.length) {
     formData.append('CoverImage', fileList.value[0].raw)
@@ -406,11 +422,12 @@ watch(loading, (newValue) => {
   margin-bottom: 8px;
   display: inline-block;
 }
+
 .dialog-footer {
   text-align: right;
 }
 
-.comment-btn{
+.comment-btn {
   position: absolute;
   bottom: 20px;
   right: 20px;
@@ -418,13 +435,12 @@ watch(loading, (newValue) => {
   user-select: none;
 }
 
-.comment-btn i{
+.comment-btn i {
   width: 32px !important;
 }
 
-.comment-btn svg{
+.comment-btn svg {
   width: 32px !important;
   height: 32px !important;
 }
-
 </style>

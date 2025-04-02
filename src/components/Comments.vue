@@ -15,10 +15,8 @@
     </div>
 
     <div class="comments-list">
-      <div v-for="comment in comments" :key="comment.time" class="comment">
-        <h4>{{ comment.username }} says</h4>
-        <p class="timestamp">{{ comment.time }}</p>
-        <p>{{ comment.comment }}</p>
+      <div v-for="comment in props.post.comments" :key="comment.time" class="comment">
+        <p>{{ comment.content }}</p>
       </div>
     </div>
 
@@ -26,12 +24,40 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, defineProps } from 'vue';
+import  api from '@/services/api.js'
+
+const props = defineProps({
+  post: {
+    type: Object,
+    required: true,
+  }
+})
+
+const userInformation = localStorage.getItem('user')? JSON.parse(localStorage.getItem('user')) :{}
 
 const comments = ref([]);
 const username = ref('');
 const comment = ref('');
 
+
+const submitComment = async () => {
+  const res = await api.post('/api/Comments/Insert', {
+    "postId": props.post.id,
+    "userId": userInformation.Id,
+    "content": comment.value,
+    "parentCommentId": 0
+  })
+  comment.value = ''
+
+ await getAllComments()
+}
+
+const getAllComments = async () => {
+  const res = await api.get(`/api/Comments/GetAll?postId=${props.post.id}&PageSize=100&PageIndex=1`);
+  console.log(res);
+  props.post.comments = res.data.content;
+}
 
 </script>
 

@@ -6,6 +6,7 @@ const apiClient = (customConfig = {}) => {
     baseURL: customConfig.baseURL || import.meta.env.VITE_API_BASE_URL || 'https://myblogx-a8gdavgwhhcyh7h7.canadacentral-01.azurewebsites.net',
     headers: {
       'Content-Type': 'application/json',
+      "accept": "*/*",
       ...customConfig.headers // Merges custom headers with defaults
     },
     timeout: 10000,
